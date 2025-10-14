@@ -44,7 +44,7 @@ async function updateSession(request: NextRequest) {
     // IMPORTANT: Do not run code between createServerClient and supabase.auth.getUser()
     const {
       data: { user },
-    } = await supabase.auth.getUser()
+    } = await (supabase.auth as any).getUser()
 
     console.log("[v0] User authenticated:", !!user, "Path:", pathname)
 

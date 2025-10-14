@@ -2,25 +2,25 @@ import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
 async function updateSession(request: NextRequest) {
-  const pathname = request.nextUrl.pathname
-
-  // Skip authentication for internal routes
-  if (
-    pathname.startsWith("/_vercel") ||
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/api") ||
-    pathname.includes(".") // Skip files with extensions
-  ) {
-    return NextResponse.next()
-  }
-
-  console.log("[v0] Middleware running for:", pathname)
-
-  let supabaseResponse = NextResponse.next({
-    request,
-  })
-
   try {
+    const pathname = request.nextUrl.pathname
+
+    // Skip authentication for internal routes
+    if (
+      pathname.startsWith("/_vercel") ||
+      pathname.startsWith("/_next") ||
+      pathname.startsWith("/api") ||
+      pathname.includes(".") // Skip files with extensions
+    ) {
+      return NextResponse.next()
+    }
+
+    console.log("[v0] Middleware running for:", pathname)
+
+    let supabaseResponse = NextResponse.next({
+      request,
+    })
+
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://difabskwzjbhjiwpdldb.supabase.co"
     const supabaseAnonKey =
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
@@ -71,7 +71,9 @@ async function updateSession(request: NextRequest) {
   } catch (error) {
     console.error("[v0] Middleware error:", error)
     // On error, allow the request to proceed to avoid blocking the entire app
-    return supabaseResponse
+    return NextResponse.next({
+      request,
+    })
   }
 }
 

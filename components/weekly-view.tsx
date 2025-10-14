@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
+import { AIScheduleGenerator } from "@/components/ai-schedule-generator"
 
 export function WeeklyView() {
   const [currentStartDate, setCurrentStartDate] = useState(new Date())
@@ -141,6 +142,10 @@ export function WeeklyView() {
 
   return (
     <div className="px-4 py-6">
+      <div className="mb-6">
+        <AIScheduleGenerator />
+      </div>
+
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center justify-center h-15">
           <Button variant="ghost" size="sm" onClick={goToPreviousWeek} disabled={isLoading}>

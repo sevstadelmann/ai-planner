@@ -213,8 +213,6 @@ export function SettingsView() {
           </Card>
         ))}
 
-        <OAuthDiagnostic />
-
         <Card className="bg-card border-border p-4">
           <div className="flex items-center gap-3 mb-4">
             <Calendar className="h-4 w-4 text-accent" />

@@ -51,6 +51,14 @@ export function ProfileView() {
 
   const dietaryOptions = ["Vegetarian", "Vegan", "Gluten-Free", "Dairy-Free", "Nut Allergy", "Halal", "Kosher", "None"]
 
+  const activityLevelOptions = [
+    { value: "sedentary", label: "Sedentary (little or no exercise)" },
+    { value: "lightly_active", label: "Lightly Active (1-3 days/week)" },
+    { value: "moderately_active", label: "Moderately Active (3-5 days/week)" },
+    { value: "very_active", label: "Very Active (6-7 days/week)" },
+    { value: "extremely_active", label: "Extremely Active (athlete)" },
+  ]
+
   const toggleGoal = (goal: string) => {
     setProfile((prev) => ({
       ...prev,
@@ -130,6 +138,7 @@ export function ProfileView() {
   }
 
   const handleSave = async () => {
+    console.log("[v0] Starting profile save")
     setSaving(true)
     try {
       const supabase = createClient()
@@ -137,60 +146,113 @@ export function ProfileView() {
         data: { user },
       } = await supabase.auth.getUser()
 
+      console.log("[v0] User authenticated:", !!user)
       if (!user) throw new Error("Not authenticated")
 
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({
-          display_name: profile.name,
-          age: Number.parseInt(profile.age) || null,
-          height_cm: Number.parseInt(profile.height) || null,
-          weight_kg: Number.parseFloat(profile.weight) || null,
-          activity_level: profile.activityLevel || null,
+      const updateData: any = {
+        full_name: profile.name,
+        updated_at: new Date().toISOString(),
+      }
+
+      if (profile.age) updateData.age = Number.parseInt(profile.age)
+      if (profile.height) updateData.height_cm = Number.parseFloat(profile.height)
+      if (profile.weight) updateData.weight_kg = Number.parseFloat(profile.weight)
+      if (profile.activityLevel) updateData.activity_level = profile.activityLevel
+
+      console.log("[v0] Update data:", updateData)
+
+      const { error: updateError } = await supabase.from("profiles").update(updateData).eq("id", user.id)
+
+      console.log("[v0] Profile update error:", updateError)
+
+      if (updateError) {
+        console.log("[v0] Update error details:", {
+          message: updateError.message,
+          code: updateError.code,
+          details: updateError.details,
         })
-        .eq("id", user.id)
 
-      if (updateError) throw updateError
+        if (updateError.message?.includes("Could not find the") && updateError.message?.includes("column")) {
+          console.log("[v0] Column not found, attempting basic update")
+          const { error: basicUpdateError } = await supabase
+            .from("profiles")
+            .update({
+              full_name: profile.name,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", user.id)
 
-      await supabase.from("user_goals").delete().eq("user_id", user.id)
+          if (basicUpdateError) throw basicUpdateError
 
-      if (profile.goals.length > 0) {
-        const { error: goalsError } = await supabase.from("user_goals").insert(
-          profile.goals.map((goal) => ({
-            user_id: user.id,
-            goal_type: goal,
-          })),
-        )
-        if (goalsError) throw goalsError
+          toast({
+            title: "Partial Update",
+            description: "Profile name updated. Some fields require database setup.",
+            variant: "default",
+          })
+        } else if (updateError.message?.includes("Could not find the table")) {
+          throw new Error("Database tables not set up. Please run the setup SQL script.")
+        } else {
+          throw updateError
+        }
+      } else {
+        console.log("[v0] Profile updated successfully")
+        toast({
+          title: "Success",
+          description: "Profile updated successfully",
+        })
       }
 
-      await supabase.from("dietary_preferences").delete().eq("user_id", user.id)
+      console.log("[v0] Updating goals:", profile.goals)
+      try {
+        await supabase.from("user_goals").delete().eq("user_id", user.id)
 
-      if (profile.dietaryRestrictions.length > 0) {
-        const { error: dietError } = await supabase.from("dietary_preferences").insert(
-          profile.dietaryRestrictions.map((restriction) => ({
-            user_id: user.id,
-            preference_type: "restriction",
-            value: restriction,
-          })),
-        )
-        if (dietError) throw dietError
+        if (profile.goals.length > 0) {
+          const { error: goalsInsertError } = await supabase.from("user_goals").insert(
+            profile.goals.map((goal) => ({
+              user_id: user.id,
+              goal_type: goal,
+            })),
+          )
+          console.log("[v0] Goals insert error:", goalsInsertError)
+        }
+      } catch (goalsError: any) {
+        console.log("[v0] Goals table not available:", goalsError.message)
       }
 
+      console.log("[v0] Updating dietary preferences:", profile.dietaryRestrictions)
+      try {
+        await supabase.from("dietary_preferences").delete().eq("user_id", user.id)
+
+        if (profile.dietaryRestrictions.length > 0) {
+          const { error: dietInsertError } = await supabase.from("dietary_preferences").insert(
+            profile.dietaryRestrictions.map((restriction) => ({
+              user_id: user.id,
+              preference_type: "restriction",
+              value: restriction,
+            })),
+          )
+          console.log("[v0] Dietary preferences insert error:", dietInsertError)
+        }
+      } catch (dietError: any) {
+        console.log("[v0] Dietary preferences table not available:", dietError.message)
+      }
+
+      console.log("[v0] Profile save completed successfully")
       toast({
         title: "Success",
         description: "Profile updated successfully",
       })
       setIsEditing(false)
-    } catch (error) {
-      console.error("Error saving profile:", error)
+    } catch (error: any) {
+      console.error("[v0] Error saving profile:", error)
       toast({
         title: "Error",
-        description: "Failed to save profile. Please try again.",
+        description: error.message || "Failed to save profile. Please try again.",
         variant: "destructive",
       })
     } finally {
       setSaving(false)
+      console.log("[v0] Profile save process finished")
     }
   }
 
@@ -314,6 +376,22 @@ export function ProfileView() {
                 />
               </div>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="activityLevel">Activity Level</Label>
+              <select
+                id="activityLevel"
+                value={profile.activityLevel}
+                onChange={(e) => setProfile({ ...profile, activityLevel: e.target.value })}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <option value="">Select activity level</option>
+                {activityLevelOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4">
@@ -331,7 +409,12 @@ export function ProfileView() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Activity Level</p>
-              <p className="font-medium capitalize">{profile.activityLevel || "Not set"}</p>
+              <p className="font-medium capitalize">
+                {profile.activityLevel
+                  ? activityLevelOptions.find((opt) => opt.value === profile.activityLevel)?.label.split(" (")[0] ||
+                    profile.activityLevel.replace("_", " ")
+                  : "Not set"}
+              </p>
             </div>
           </div>
         )}

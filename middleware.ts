@@ -13,9 +13,10 @@ export const config = {
      * - _next/image (image optimization files)
      * - _vercel (Vercel internal routes)
      * - api (API routes)
+     * - auth (OAuth callback routes)
      * - favicon.ico (favicon file)
      * - public files (images, etc.)
      */
-    "/((?!_next/static|_next/image|_vercel|api|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|_vercel|api|auth|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 }

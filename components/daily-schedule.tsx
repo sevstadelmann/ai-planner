@@ -1,153 +1,164 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import { ScheduleCard } from "@/components/schedule-card"
 import { WorkoutCard } from "@/components/workout-card"
 import { ProductSuggestionCard } from "@/components/product-suggestion-card"
+import { createClient } from "@/lib/supabase/client"
+import { Loader2 } from "lucide-react"
 
-const scheduleData = [
-  {
-    id: "1",
-    time: "07:00",
-    type: "meal" as const,
-    title: "Breakfast",
-    description: "Protein Overnight Oats",
-    details: "High-protein breakfast to fuel your morning workout",
-    image: "/healthy-breakfast-oats.jpg",
-    actionText: "view recipe",
-    expandedContent: {
-      ingredients: [
-        "1/2 cup rolled oats",
-        "1 scoop vanilla protein powder",
-        "1 tbsp chia seeds",
-        "1/2 cup almond milk",
-        "1 tbsp honey",
-        "1/4 cup blueberries",
-      ],
-      nutrition: {
-        calories: 420,
-        protein: 28,
-        carbs: 45,
-        fat: 12,
-      },
-      instructions: [
-        "Mix oats, protein powder, and chia seeds in a jar",
-        "Add almond milk and honey, stir well",
-        "Refrigerate overnight",
-        "Top with blueberries before serving",
-      ],
-    },
-  },
-  {
-    id: "2",
-    time: "08:30",
-    type: "workout" as const,
-    title: "Morning Workout",
-    description: "Upper Body Strength",
-    details: "Focus on chest, shoulders, and triceps",
-    location: "FitLife Gym, Downtown",
-    actionText: "start workout",
-    expandedContent: {
-      equipment: ["Barbell", "Dumbbells", "Bench"],
-      duration: "45 minutes",
-      difficulty: "Medium" as const,
-      instructions: [
-        "Warm up with 5 minutes light cardio",
-        "Bench press: 4 sets x 8-10 reps",
-        "Shoulder press: 3 sets x 10-12 reps",
-        "Tricep dips: 3 sets x 12-15 reps",
-        "Cool down with stretching",
-      ],
-    },
-  },
-  {
-    id: "3",
-    time: "12:30",
-    type: "meal" as const,
-    title: "Lunch",
-    description: "Grilled Chicken Salad",
-    details: "Post-workout recovery meal with lean protein",
-    image: "/grilled-chicken-salad.png",
-    actionText: "view recipe",
-    expandedContent: {
-      ingredients: [
-        "150g grilled chicken breast",
-        "2 cups mixed greens",
-        "1/2 avocado",
-        "1/4 cup cherry tomatoes",
-        "2 tbsp olive oil vinaigrette",
-      ],
-      nutrition: {
-        calories: 380,
-        protein: 35,
-        carbs: 12,
-        fat: 22,
-      },
-    },
-  },
-  {
-    id: "4",
-    time: "15:00",
-    type: "activity" as const,
-    title: "Hydration Reminder",
-    description: "Drink 500ml water",
-    details: "Stay hydrated for optimal performance",
-    actionText: "mark complete",
-  },
-  {
-    id: "5",
-    time: "18:00",
-    type: "meal" as const,
-    title: "Abendessen",
-    description: "Chicken Tikka Masala",
-    details: "Flavorful Indian cuisine with basmati rice",
-    image: "/chicken-tikka-masala.png",
-    actionText: "read more",
-    expandedContent: {
-      ingredients: [
-        "200g chicken breast, cubed",
-        "1/2 cup basmati rice",
-        "1/4 cup tikka masala sauce",
-        "1 tbsp yogurt",
-        "Fresh cilantro for garnish",
-      ],
-      nutrition: {
-        calories: 520,
-        protein: 42,
-        carbs: 38,
-        fat: 18,
-      },
-      instructions: [
-        "Cook basmati rice according to package instructions",
-        "Marinate chicken in yogurt and spices for 30 minutes",
-        "Cook chicken until golden brown",
-        "Add tikka masala sauce and simmer",
-        "Serve over rice with cilantro",
-      ],
-    },
-  },
-  {
-    id: "6",
-    time: "19:30",
-    type: "workout" as const,
-    title: "Gym",
-    description: "Leg Press 3 × 8 Sets à 180kg",
-    details: "Lower body strength training session",
-    location: "Bundespl. 2A",
-    actionText: "read more",
-    expandedContent: {
-      equipment: ["Leg Press Machine", "Squat Rack"],
-      duration: "60 minutes",
-      difficulty: "Hard" as const,
-      instructions: [
-        "Warm up with 10 minutes on stationary bike",
-        "Leg press: 3 sets x 8 reps at 180kg",
-        "Squats: 4 sets x 10 reps",
-        "Leg curls: 3 sets x 12 reps",
-        "Calf raises: 3 sets x 15 reps",
-      ],
-    },
-  },
-]
+interface DailyScheduleProps {
+  selectedDate: string
+}
 
-export function DailySchedule() {
+export function DailySchedule({ selectedDate }: DailyScheduleProps) {
+  const [loading, setLoading] = useState(true)
+  const [scheduleData, setScheduleData] = useState<any[]>([])
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchSchedule = async () => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const supabase = createClient()
+
+      // Fetch workouts for the selected date
+      const { data: workouts, error: workoutsError } = await supabase
+        .from("workouts")
+        .select("*")
+        .eq("scheduled_date", selectedDate)
+        .order("scheduled_time", { ascending: true })
+
+      if (workoutsError && workoutsError.code !== "PGRST116") {
+        console.error("[v0] Error fetching workouts:", workoutsError)
+      }
+
+      // Fetch meals for the selected date
+      const { data: meals, error: mealsError } = await supabase
+        .from("meals")
+        .select("*")
+        .eq("scheduled_date", selectedDate)
+        .order("scheduled_time", { ascending: true })
+
+      if (mealsError && mealsError.code !== "PGRST116") {
+        console.error("[v0] Error fetching meals:", mealsError)
+      }
+
+      const formatExercises = (exercises: any[]): string[] => {
+        if (!Array.isArray(exercises)) return []
+        return exercises.map((ex) => {
+          if (typeof ex === "string") return ex
+          const parts = [ex.name || "Exercise"]
+          if (ex.sets) parts.push(`${ex.sets} sets`)
+          if (ex.reps) parts.push(`${ex.reps} reps`)
+          if (ex.weight) parts.push(`${ex.weight}`)
+          return parts.join(" - ")
+        })
+      }
+
+      const formatInstructions = (instructions: any[]): string[] => {
+        if (!Array.isArray(instructions)) return []
+        return instructions.map((inst) => {
+          if (typeof inst === "string") return inst
+          if (typeof inst === "object" && inst !== null) {
+            return inst.step || inst.instruction || JSON.stringify(inst)
+          }
+          return String(inst)
+        })
+      }
+
+      // Combine and sort by time
+      const combined = [
+        ...(workouts || []).map((w) => ({
+          id: w.id,
+          time: w.scheduled_time || "00:00",
+          type: "workout" as const,
+          title: w.title || "Workout",
+          description: w.description || "",
+          details: w.notes || "",
+          location: w.location,
+          actionText: "start workout",
+          expandedContent: {
+            equipment: w.equipment || [],
+            duration: w.duration_minutes ? `${w.duration_minutes} minutes` : "Unknown",
+            difficulty: (w.intensity || "Medium") as "Easy" | "Medium" | "Hard",
+            instructions: formatExercises(w.exercises || []),
+          },
+        })),
+        ...(meals || []).map((m) => ({
+          id: m.id,
+          time: m.scheduled_time || "00:00",
+          type: "meal" as const,
+          title: m.meal_type || "Meal",
+          description: m.title || "",
+          details: m.description || "",
+          image: m.image_url,
+          actionText: "view recipe",
+          expandedContent: {
+            ingredients: m.ingredients || [],
+            nutrition: {
+              calories: m.calories || 0,
+              protein: m.protein_g || 0,
+              carbs: m.carbs_g || 0,
+              fat: m.fat_g || 0,
+            },
+            instructions: formatInstructions(m.instructions || []),
+          },
+        })),
+      ].sort((a, b) => a.time.localeCompare(b.time))
+
+      setScheduleData(combined)
+    } catch (err) {
+      console.error("[v0] Error loading schedule:", err)
+      setError(err instanceof Error ? err.message : "Failed to load schedule")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchSchedule()
+  }, [selectedDate])
+
+  useEffect(() => {
+    const handleScheduleGenerated = () => {
+      fetchSchedule()
+    }
+
+    window.addEventListener("scheduleGenerated", handleScheduleGenerated)
+    return () => window.removeEventListener("scheduleGenerated", handleScheduleGenerated)
+  }, [selectedDate])
+
+  if (loading) {
+    return (
+      <div className="px-4 py-12 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="px-4 py-6">
+        <div className="text-center text-muted-foreground">
+          <p>Error loading schedule: {error}</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (scheduleData.length === 0) {
+    return (
+      <div className="px-4 py-6">
+        <div className="text-center text-muted-foreground">
+          <p>No schedule for this day yet.</p>
+          <p className="text-sm mt-2">Use the AI generator above to create a schedule!</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="px-4 py-6 space-y-4">
       {scheduleData.map((item) => (

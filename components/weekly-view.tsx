@@ -12,6 +12,7 @@ import { AIScheduleGenerator } from "@/components/ai-schedule-generator"
 export function WeeklyView() {
   const [currentStartDate, setCurrentStartDate] = useState(new Date())
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0])
   const [scheduleData, setScheduleData] = useState<Record<string, any[]>>({})
   const [summary, setSummary] = useState({ totalWorkouts: 0, totalMeals: 0, totalEvents: 0 })
   const [isLoading, setIsLoading] = useState(true)
@@ -97,6 +98,15 @@ export function WeeklyView() {
     fetchSchedule(currentStartDate)
   }, [currentStartDate])
 
+  useEffect(() => {
+    const handleScheduleGenerated = () => {
+      fetchSchedule(currentStartDate)
+    }
+
+    window.addEventListener("scheduleGenerated", handleScheduleGenerated)
+    return () => window.removeEventListener("scheduleGenerated", handleScheduleGenerated)
+  }, [currentStartDate])
+
   const goToPreviousWeek = () => {
     const newDate = new Date(currentStartDate)
     newDate.setDate(newDate.getDate() - 7)
@@ -143,7 +153,7 @@ export function WeeklyView() {
   return (
     <div className="px-4 py-6">
       <div className="mb-6">
-        <AIScheduleGenerator />
+        <AIScheduleGenerator selectedDate={selectedDate} onDateChange={setSelectedDate} />
       </div>
 
       <div className="flex items-center justify-between mb-2">

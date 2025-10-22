@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -10,12 +10,20 @@ import { Sparkles, Calendar, Dumbbell, UtensilsCrossed, Loader2 } from "lucide-r
 import { useToast } from "@/hooks/use-toast"
 import { api } from "@/lib/api/client"
 
-export function AIScheduleGenerator() {
+interface AIScheduleGeneratorProps {
+  selectedDate: string
+  onDateChange: (date: string) => void
+}
+
+export function AIScheduleGenerator({ selectedDate, onDateChange }: AIScheduleGeneratorProps) {
   const [loading, setLoading] = useState(false)
   const [scheduleType, setScheduleType] = useState<"daily" | "weekly">("daily")
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0])
   const [daysPerWeek, setDaysPerWeek] = useState("4")
   const { toast } = useToast()
+
+  useEffect(() => {
+    // This ensures the date picker stays in sync with the parent
+  }, [selectedDate])
 
   const handleGenerateSchedule = async () => {
     setLoading(true)
@@ -39,8 +47,7 @@ export function AIScheduleGenerator() {
         })
       }
 
-      // Refresh the page to show new schedule
-      window.location.reload()
+      window.dispatchEvent(new CustomEvent("scheduleGenerated"))
     } catch (error) {
       console.error("Schedule generation error:", error)
       toast({
@@ -91,7 +98,7 @@ export function AIScheduleGenerator() {
 
         <div className="space-y-2">
           <Label>{scheduleType === "daily" ? "Date" : "Start Date"}</Label>
-          <Input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
+          <Input type="date" value={selectedDate} onChange={(e) => onDateChange(e.target.value)} />
         </div>
 
         {scheduleType === "weekly" && (

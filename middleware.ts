@@ -16,15 +16,24 @@ export async function middleware(request: NextRequest) {
 
     console.log("[v0] Middleware running for:", pathname)
 
-    // This avoids the __dirname error in Edge runtime
     const response = NextResponse.next()
 
     // Public paths that don't require authentication
     const publicPaths = ["/login", "/onboarding", "/auth/callback"]
     const isPublicPath = publicPaths.some((path) => pathname.startsWith(path))
 
-    // Check if user has session cookie
-    const hasSessionCookie = request.cookies.has("sb-difabskwzjbhjiwpdldb-auth-token")
+    const cookies = request.cookies.getAll()
+
+    console.log("[v0] All cookies:", cookies.map((c) => c.name).join(", "))
+    console.log("[v0] Cookie count:", cookies.length)
+
+    // Supabase splits auth tokens into multiple cookies with .0, .1 suffixes
+    const hasSessionCookie = cookies.some(
+      (cookie) =>
+        cookie.name.startsWith("sb-") && cookie.name.includes("-auth-token") && !cookie.name.includes("code-verifier"), // Exclude OAuth code verifier cookie
+    )
+
+    console.log("[v0] Session cookie found:", hasSessionCookie)
 
     // Redirect to login if no session and not on public path
     if (!hasSessionCookie && !isPublicPath) {

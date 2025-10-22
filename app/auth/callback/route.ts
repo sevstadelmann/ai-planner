@@ -1,5 +1,6 @@
-import { createClient } from "@/lib/supabase/server"
+import { createServerClient } from "@supabase/ssr"
 import { NextResponse } from "next/server"
+import { cookies } from "next/headers"
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
@@ -9,7 +10,27 @@ export async function GET(request: Request) {
   console.log("[v0] Auth callback received, code:", code ? "present" : "missing")
 
   if (code) {
-    const supabase = await createClient()
+    const cookieStore = await cookies()
+    const response = NextResponse.redirect(`${origin}/`)
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            // Set cookies on both the cookie store and the response
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options)
+              response.cookies.set(name, value, options)
+            })
+          },
+        },
+      },
+    )
 
     try {
       const { data, error } = await supabase.auth.exchangeCodeForSession(code)
@@ -20,10 +41,11 @@ export async function GET(request: Request) {
       }
 
       console.log("[v0] Successfully exchanged code for session")
+      console.log("[v0] Session cookies should now be set")
 
       // Check if user has completed onboarding
       if (data.user) {
-        const { data: profile } = await supabase.from("profiles").select("*").eq("id", data.user.id).single()
+        const { data: profile } = await supabase.from("profiles").select("*").eq("id", data.user.id).maybeSingle()
 
         if (profile && profile.height_cm) {
           // Profile complete, redirect to home
@@ -35,6 +57,8 @@ export async function GET(request: Request) {
           return NextResponse.redirect(`${origin}/onboarding`)
         }
       }
+
+      return response
     } catch (err) {
       console.error("[v0] Unexpected error in auth callback:", err)
       return NextResponse.redirect(`${origin}/login?error=authentication_failed`)

@@ -20,10 +20,20 @@ export async function updateSession(request: NextRequest) {
     request,
   })
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://difabskwzjbhjiwpdldb.supabase.co"
-  const supabaseAnonKey =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpZmFic2t3empiaGppd3BkbGRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk5MDAxMzQsImV4cCI6MjA3NTQ3NjEzNH0.FLhdUW9BN8fpSGU9XgsBHybwwjb5VGQshg5B838JN8g"
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error("[v0] CRITICAL: Supabase environment variables not set!")
+    console.error("[v0] NEXT_PUBLIC_SUPABASE_URL:", !!supabaseUrl)
+    console.error("[v0] NEXT_PUBLIC_SUPABASE_ANON_KEY:", !!supabaseAnonKey)
+
+    // Redirect to login with error
+    const url = request.nextUrl.clone()
+    url.pathname = "/login"
+    url.searchParams.set("error", "configuration_error")
+    return NextResponse.redirect(url)
+  }
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {

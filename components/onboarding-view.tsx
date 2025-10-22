@@ -108,6 +108,10 @@ export function OnboardingView() {
             id: user.id,
             email: user.email || "",
             full_name: profile.name || null,
+            age: profile.age ? Number.parseInt(profile.age) : null,
+            height_cm: profile.height ? Number.parseInt(profile.height) : null,
+            weight_kg: profile.weight ? Number.parseFloat(profile.weight) : null,
+            activity_level: profile.activityLevel || null,
             updated_at: new Date().toISOString(),
           },
           {
@@ -116,8 +120,13 @@ export function OnboardingView() {
         )
 
         if (profileError) {
-          console.error("Profile upsert error:", profileError)
-          throw new Error("Failed to create profile")
+          console.error("[v0] Profile upsert error:", profileError)
+
+          if (profileError.message.includes("relation") || profileError.message.includes("does not exist")) {
+            throw new Error("Database not set up. Please run the setup script in Supabase SQL Editor first.")
+          }
+
+          throw new Error(`Failed to create profile: ${profileError.message}`)
         }
 
         if (profile.goals.length > 0) {
@@ -128,8 +137,7 @@ export function OnboardingView() {
             })),
           )
           if (goalError) {
-            console.error("Goal insert error:", goalError.message)
-            // Don't throw - table might not exist yet
+            console.error("[v0] Goal insert error:", goalError.message)
           }
         }
 
@@ -143,8 +151,7 @@ export function OnboardingView() {
             })),
           )
           if (dietError) {
-            console.error("Dietary preference insert error:", dietError.message)
-            // Don't throw - table might not exist yet
+            console.error("[v0] Dietary preference insert error:", dietError.message)
           }
         }
 
@@ -154,7 +161,7 @@ export function OnboardingView() {
         })
         router.push("/")
       } catch (err: any) {
-        console.error("Onboarding error:", err)
+        console.error("[v0] Onboarding error:", err)
         toast({
           title: "Error",
           description: err.message || "Failed to save profile. Please try again.",
@@ -477,7 +484,6 @@ export function OnboardingView() {
             </div>
           )}
 
-          {/* Navigation Buttons */}
           <div className="flex gap-3 pt-4">
             {step > 1 && (
               <Button variant="outline" onClick={handleBack} className="gap-2 bg-transparent" disabled={loading}>

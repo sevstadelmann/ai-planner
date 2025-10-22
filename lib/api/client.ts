@@ -139,7 +139,7 @@ export const api = {
   // Scheduler
   async generateDailySchedule(date: string) {
     const headers = await getAuthHeaders()
-    const response = await fetch(`${API_BASE_URL}/api/scheduler/daily`, {
+    const response = await fetch(`/api/scheduler/daily`, {
       method: "POST",
       headers,
       body: JSON.stringify({ date }),
@@ -150,7 +150,7 @@ export const api = {
 
   async generateWeeklySchedule(startDate: string, daysPerWeek = 4) {
     const headers = await getAuthHeaders()
-    const response = await fetch(`${API_BASE_URL}/api/scheduler/weekly`, {
+    const response = await fetch(`/api/scheduler/weekly`, {
       method: "POST",
       headers,
       body: JSON.stringify({ start_date: startDate, days_per_week: daysPerWeek }),
